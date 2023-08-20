@@ -13,6 +13,9 @@ export default class Game extends Phaser.Scene
     /** @type {Phaser.Types.Input.Keyboard.CursorKeys} */
     cursors;
 
+    /** @type {Phaser.Physics.Arcade.Group} */
+    carrots;
+
     constructor()
     {
         super('Game')
@@ -60,6 +63,34 @@ export default class Game extends Phaser.Scene
             sprite.x = -halfWidth
         }
     }
+
+    addCarrotAbove(sprite){
+        const y = sprite.y - sprite.displayWidth
+
+        /** @type {Phaser.Physics.Arcade.Sprite} */
+        const carrot = this.carrots.get(sprite.x, y, 'carrot');
+
+        // set active and visible
+        carrot.setActive(true);
+        carrot.setVisible(true)
+
+        this.add.existing(carrot)
+
+        // update the physics body size
+        carrot.body.setSize(carrot.width, carrot.height)
+
+        // make sure body is enabled in the physics world
+        this.physics.world.enable(carrot)
+    }
+
+    handleCollectCarrot(player, carrot){
+        // hide from display
+        this.carrots.killAndHide(carrot);
+
+        // disable from physics world
+        this.physics.world.disableBody(carrot.body);
+
+    }
     create()
     {
         // create background
@@ -77,12 +108,22 @@ export default class Game extends Phaser.Scene
         this.player.body.checkCollision.right = false;
 
         // create carrot
-        const carrot = new Carrot(this, 240, 320, 'carrot');
-        this.add.existing(carrot);
+        this.carrots = this.physics.add.group({
+            classType:Carrot
+        })
+        this.carrots.get(240, 320, 'carrot')
 
 
 
         this.physics.add.collider(this.platforms, this.player)
+        this.physics.add.collider(this.carrots, this.platforms)
+        this.physics.add.overlap(
+            this.player,
+            this.carrots,
+            this.handleCollectCarrot,
+            undefined,
+            this
+        )
 
         this.cameras.main.startFollow(this.player);
 
@@ -102,6 +143,9 @@ export default class Game extends Phaser.Scene
 			{
 				platform.y = scrollY - Phaser.Math.Between(50, 100)
 				platform.body.updateFromGameObject()
+
+                // create a carrot above the platform being reused.
+                this.addCarrotAbove(platform);
             }
         })
 
